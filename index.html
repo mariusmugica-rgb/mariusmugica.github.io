@@ -1,0 +1,1113 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CC1101 RF Tool (Bluetooth)</title>
+<style>
+  :root{
+    --bg:#0f1317; --panel:#161b21; --panel2:#1d232b; --border:#2a313b;
+    --text:#e6e9ec; --muted:#8a95a1; --accent:#4f8cff; --accent2:#3bd48a;
+    --danger:#e5534b; --warn:#e5a84b; --mono:'SFMono-Regular',Consolas,Menlo,monospace;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;}
+  header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 20px;border-bottom:1px solid var(--border);background:var(--panel);}
+  header h1{font-size:16px;font-weight:600;margin:0;letter-spacing:.3px;}
+  header .right{display:flex;align-items:center;gap:12px;}
+  header .status{font-size:12px;color:var(--muted);}
+  .dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--danger);margin-right:6px;}
+  .dot.on{background:var(--accent2);}
+  .layout{display:flex;min-height:calc(100vh - 53px);}
+  nav{width:170px;background:var(--panel);border-right:1px solid var(--border);padding:12px 0;flex-shrink:0;}
+  nav button{display:block;width:100%;text-align:left;padding:10px 20px;background:none;border:none;color:var(--muted);font-size:13px;cursor:pointer;border-left:2px solid transparent;}
+  nav button.active{color:var(--text);border-left-color:var(--accent);background:var(--panel2);}
+  main{flex:1;padding:24px;max-width:960px;}
+  section{display:none;}
+  section.active{display:block;}
+  .offline section{opacity:.45;pointer-events:none;}
+  h2{font-size:15px;font-weight:600;margin:0 0 14px;color:var(--text);}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:18px;margin-bottom:16px;}
+  .card.notice{border-color:var(--warn);}
+  label{display:block;font-size:12px;color:var(--muted);margin-bottom:5px;margin-top:12px;}
+  label:first-child{margin-top:0;}
+  input[type=text],input[type=number],select,textarea{
+    width:100%;padding:8px 10px;background:var(--panel2);border:1px solid var(--border);
+    border-radius:6px;color:var(--text);font-size:13px;font-family:inherit;
+  }
+  textarea{font-family:var(--mono);font-size:12px;min-height:110px;resize:vertical;}
+  .row{display:flex;gap:12px;}
+  .row > div{flex:1;}
+  button.btn{padding:8px 16px;border-radius:6px;border:1px solid var(--border);background:var(--panel2);color:var(--text);font-size:13px;cursor:pointer;margin-top:14px;margin-right:8px;}
+  button.btn:hover{border-color:var(--accent);}
+  button.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;}
+  button.btn.danger{background:transparent;border-color:var(--danger);color:var(--danger);}
+  button.btn.success{background:transparent;border-color:var(--accent2);color:var(--accent2);}
+  button.btn:disabled{opacity:.4;cursor:default;}
+  header button.btn{margin:0;}
+  .pill{display:inline-block;padding:2px 9px;border-radius:99px;font-size:11px;border:1px solid var(--border);color:var(--muted);}
+  .pill.on{color:var(--accent2);border-color:var(--accent2);}
+  .pill.warn{color:var(--warn);border-color:var(--warn);}
+  table{width:100%;border-collapse:collapse;font-size:13px;}
+  th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--border);}
+  th{color:var(--muted);font-weight:500;font-size:11px;text-transform:uppercase;letter-spacing:.4px;}
+  td.actions{white-space:nowrap;}
+  td.actions button{font-size:11px;padding:4px 8px;margin-top:0;margin-right:4px;}
+  tr.looping td:first-child::after{content:' ● en boucle';color:var(--accent2);font-size:11px;}
+  .meter{height:6px;background:var(--panel2);border-radius:99px;overflow:hidden;margin-top:8px;}
+  .meter > div{height:100%;background:var(--accent);width:0%;transition:width .2s;}
+  .muted{color:var(--muted);font-size:12px;}
+  .flex-between{display:flex;align-items:center;justify-content:space-between;gap:12px;}
+  #toast{position:fixed;bottom:18px;right:18px;background:var(--panel2);border:1px solid var(--border);
+    padding:10px 16px;border-radius:8px;font-size:13px;display:none;max-width:360px;z-index:50;}
+  #toast.err{border-color:var(--danger);color:var(--danger);}
+  #toast.ok{border-color:var(--accent2);color:var(--accent2);}
+  .hint{font-size:11px;color:var(--muted);margin-top:4px;}
+  #loopBanner{display:none;align-items:center;justify-content:space-between;gap:12px;padding:10px 20px;background:rgba(59,212,138,.1);border-bottom:1px solid var(--accent2);font-size:13px;color:var(--accent2);}
+  #loopBanner button.btn{margin:0;padding:5px 12px;}
+  dialog{background:var(--panel);color:var(--text);border:1px solid var(--border);border-radius:10px;padding:20px;width:min(580px,92vw);}
+  dialog::backdrop{background:rgba(0,0,0,.6);}
+  code{font-family:var(--mono);font-size:12px;background:var(--panel2);padding:1px 5px;border-radius:4px;}
+  @media (max-width:760px){
+    header{flex-wrap:wrap;padding:10px 14px;}
+    .layout{flex-direction:column;}
+    nav{width:auto;display:flex;overflow-x:auto;border-right:none;border-bottom:1px solid var(--border);padding:0;}
+    nav button{width:auto;white-space:nowrap;padding:12px 16px;border-left:none;border-bottom:2px solid transparent;}
+    nav button.active{border-bottom-color:var(--accent);}
+    main{padding:14px;}
+    .row{flex-direction:column;gap:0;}
+    table{display:block;overflow-x:auto;white-space:nowrap;}
+    #toast{left:12px;right:12px;bottom:12px;max-width:none;}
+    button.btn{padding:10px 14px;}
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>CC1101 RF Tool <span class="muted">· Bluetooth</span></h1>
+  <div class="right">
+    <div class="status"><span class="dot" id="dot"></span><span id="hdrStatus">non connecté</span></div>
+    <button class="btn primary" id="btnConnect">Connecter la carte</button>
+  </div>
+</header>
+<div id="loopBanner">
+  <span id="loopText"></span>
+  <button class="btn danger" id="btnLoopStop">Arrêter la boucle</button>
+</div>
+<div class="layout" id="layout">
+  <nav>
+    <button class="navbtn active" data-tab="capture">Capture</button>
+    <button class="navbtn" data-tab="library">Bibliothèque</button>
+    <button class="navbtn" data-tab="triggers">Déclencheurs</button>
+    <button class="navbtn" data-tab="settings">Réglages</button>
+  </nav>
+  <main>
+
+    <div class="card notice" id="noSerial" style="display:none">
+      <b>Ce navigateur ne gère pas le Bluetooth web (Web Bluetooth).</b><br>
+      <span class="muted">Utilise Google Chrome (Android, Mac, Windows, Linux), Microsoft Edge ou Brave. Safari et Firefox ne le supportent pas, et sur iPhone/iPad aucun navigateur classique ne le gère : installe l'app gratuite « Bluefy ». La page doit aussi être ouverte en https:// (ou en fichier local sur ordinateur).</span>
+    </div>
+    <div class="card notice" id="offlineNotice">
+      <b>Carte non connectée.</b>
+      <div class="muted" style="margin-top:6px">
+        Alimente la carte (USB, batterie…), active le Bluetooth de ton appareil, puis clique sur « Connecter la carte »
+        et choisis <code>CC1101-Tool</code>. Au premier essai, le code PIN par défaut est <code>0000</code> (à changer dans Réglages).
+        Une seule connexion à la fois : si ça ne se connecte pas, vérifie qu'un autre appareil n'est pas déjà connecté à la carte.
+        Si une capture ou une boucle tournait déjà sur la carte, elle est retrouvée automatiquement.
+      </div>
+    </div>
+
+    <div id="sections">
+    <section id="tab-capture" class="active">
+      <h2>Capture d'un signal</h2>
+      <div class="card">
+        <div class="row">
+          <div>
+            <label>Fréquence (MHz)</label>
+            <input type="text" id="freqInput" value="433.92">
+          </div>
+          <div>
+            <label>Modulation</label>
+            <select id="modSelect">
+              <option value="2" selected>ASK/OOK</option>
+              <option value="0">2-FSK</option>
+              <option value="1">GFSK</option>
+              <option value="3">4-FSK</option>
+              <option value="4">MSK</option>
+            </select>
+          </div>
+        </div>
+        <div class="row">
+          <div>
+            <label>Recherche automatique de fréquence</label>
+            <div class="row">
+              <input type="text" id="scanStart" value="433.00">
+              <input type="text" id="scanStop" value="434.80">
+              <input type="number" id="scanDur" value="6" min="1" max="30" style="max-width:70px">
+            </div>
+            <div class="hint">Début / fin (MHz) / durée (s). Appuie plusieurs fois sur ta télécommande pendant la recherche.</div>
+            <button class="btn" id="btnScan">Lancer la recherche</button>
+          </div>
+        </div>
+
+        <hr style="border-color:var(--border);margin:18px 0">
+
+        <div class="flex-between">
+          <div>
+            <span class="pill" id="capPill">Inactif</span>
+            <span class="muted" id="capInfo"></span>
+          </div>
+          <div>
+            <button class="btn primary" id="btnStart">Démarrer l'écoute</button>
+            <button class="btn danger" id="btnStop" disabled>Arrêter</button>
+          </div>
+        </div>
+        <div class="meter"><div id="rssiBar"></div></div>
+        <div class="hint">RSSI : <span id="rssiVal">--</span> dBm. L'enregistrement commence dès « Démarrer » et continue jusqu'à « Arrêter », même si rien n'est détecté : rien n'est perdu. La carte continue d'écouter même si tu fermes cette page.</div>
+      </div>
+
+      <div class="card" id="pendingCard" style="display:none">
+        <h2>Signal capturé</h2>
+        <div class="muted" id="pendingInfo"></div>
+        <label>Nom</label>
+        <input type="text" id="pendingName" placeholder="ex: Prise salon - ON">
+        <label>Durées brutes (µs), séparées par des virgules</label>
+        <textarea id="pendingData"></textarea>
+        <div class="hint">Premier chiffre = temps avant le premier changement d'état (silence). Tu peux supprimer à la main les valeurs de bruit.</div>
+        <div class="row" style="align-items:flex-end">
+          <div style="flex:0 0 150px"><label>Silence à rogner (ms)</label><input type="number" id="trimThr" value="50" min="1"></div>
+          <div>
+            <button class="btn" id="btnTrim">Rogner le silence début/fin</button>
+            <button class="btn success" id="btnSave">Enregistrer dans la bibliothèque</button>
+            <button class="btn" id="btnDiscard">Ignorer</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="tab-library">
+      <h2>Signaux enregistrés</h2>
+      <div class="card">
+        <div class="row">
+          <div><label>Répétitions par envoi</label><input type="number" id="repCount" value="10" min="1" max="200"></div>
+          <div><label>Boucle : intervalle (s)</label><input type="number" id="loopInterval" value="2" min="0.2" step="0.1"></div>
+          <div><label>Boucle : nb d'envois max (0 = infini)</label><input type="number" id="loopMax" value="0" min="0"></div>
+        </div>
+        <label style="display:flex;align-items:center;gap:8px;margin-top:14px"><input type="checkbox" id="loopPersist" checked style="width:auto"> Reprendre automatiquement la boucle si la carte redémarre (boucle infinie uniquement)</label>
+        <div class="hint">« Rejouer » envoie le signal une fois (avec ce nombre de répétitions). « Boucle » le renvoie à l'intervalle choisi, jusqu'à ce que tu cliques sur « Arrêter la boucle » (bandeau en haut), même si tu fermes la page.</div>
+      </div>
+      <div class="card">
+        <div class="flex-between" style="margin-bottom:10px">
+          <span class="muted" id="libCount"></span>
+          <div>
+            <button class="btn" id="btnExportAll" style="margin-top:0">Exporter tout (JSON)</button>
+            <input type="file" id="importFile" style="display:none" accept=".json,application/json">
+            <button class="btn" id="btnImport" style="margin-top:0;margin-right:0">Importer un JSON</button>
+          </div>
+        </div>
+        <table>
+          <thead><tr><th>Nom</th><th>Fréq.</th><th>Modul.</th><th>Impulsions</th><th></th></tr></thead>
+          <tbody id="sigTableBody"></tbody>
+        </table>
+        <div class="hint" id="libStorage"></div>
+      </div>
+    </section>
+
+    <section id="tab-triggers">
+      <h2>Écoute permanente</h2>
+      <div class="card">
+        <div class="flex-between">
+          <div>
+            <span class="pill" id="watchPill">Désactivée</span>
+            <span class="muted" id="watchInfo"></span>
+          </div>
+          <div><button class="btn primary" id="btnWatchToggle" style="margin-top:0;margin-right:0">Activer l'écoute permanente</button></div>
+        </div>
+        <div class="row">
+          <div><label>Fréquence d'écoute (MHz)</label><input type="text" id="watchFreq" value="433.92"></div>
+          <div><label>Modulation</label>
+            <select id="watchMod">
+              <option value="2" selected>ASK/OOK</option><option value="0">2-FSK</option><option value="1">GFSK</option>
+              <option value="3">4-FSK</option><option value="4">MSK</option>
+            </select>
+          </div>
+        </div>
+        <button class="btn" id="btnWatchApply">Appliquer fréquence / modulation</button>
+        <div class="hint">Quand elle n'est pas en train de capturer, de scanner ou d'émettre, la carte écoute en continu à cette fréquence et compare ce qu'elle reçoit aux signaux « déclencheurs » des règles ci-dessous. Elle se met en pause pendant tes captures et reprend toute seule. Ce réglage est mémorisé dans la carte (il reprend après un redémarrage) et fonctionne sans la page.</div>
+      </div>
+
+      <h2 id="ruleFormTitle">Nouvelle règle</h2>
+      <div class="card">
+        <div class="row">
+          <div><label>Quand la carte reçoit ce signal (déclencheur)</label><select id="ruleTrigger"></select></div>
+          <div><label>Alors elle émet ce signal (action)</label><select id="ruleAction"></select></div>
+        </div>
+        <div class="row">
+          <div><label>Anti-rebond (s)</label><input type="number" id="ruleCooldown" value="2" min="0.3" step="0.1"></div>
+          <div><label>Répétitions de l'émission</label><input type="number" id="ruleRepeats" value="10" min="1" max="200"></div>
+        </div>
+        <div class="hint">Anti-rebond : délai minimum entre deux déclenchements (une télécommande envoie la même trame plusieurs fois par appui). Le signal déclencheur doit d'abord être capturé et enregistré dans la bibliothèque, à la même fréquence que l'écoute.</div>
+        <button class="btn primary" id="btnRuleSave">Ajouter la règle</button>
+        <button class="btn" id="btnRuleCancel" style="display:none">Annuler la modification</button>
+      </div>
+
+      <div class="card">
+        <div class="muted" id="ruleCount" style="margin-bottom:10px"></div>
+        <table>
+          <thead><tr><th>Déclencheur</th><th>Action</th><th>Anti-rebond</th><th>Rép.</th><th>Déclenché</th><th></th></tr></thead>
+          <tbody id="ruleTableBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="tab-settings">
+      <h2>Avancé CC1101</h2>
+      <div class="card">
+        <div class="row">
+          <div><label>Bande passante RX (kHz)</label><input type="text" id="advRxbw" value="300"></div>
+          <div><label>Débit (kBaud)</label><input type="text" id="advDrate" value="3.79"></div>
+        </div>
+        <div class="row">
+          <div><label>Déviation (kHz, FSK)</label><input type="text" id="advDev" value="47.60"></div>
+          <div><label>Seuil RSSI détection (dBm)</label><input type="text" id="advThresh" value="-75"></div>
+        </div>
+        <div class="row">
+          <div><label>Puissance d'émission (dBm)</label>
+            <select id="advPa">
+              <option value="-30">-30</option><option value="-20">-20</option><option value="-15">-15</option>
+              <option value="-10">-10</option><option value="0">0</option><option value="5">5</option>
+              <option value="7">7</option><option value="10" selected>10 (max)</option>
+            </select>
+          </div>
+          <div></div>
+        </div>
+        <button class="btn" id="btnAdvSave">Appliquer</button>
+        <div class="hint" id="bootInfo"></div>
+        <div class="hint">Si la carte redémarre pendant les émissions (chute de tension), essaie de baisser la puissance. Ces réglages sont mémorisés dans la carte et réappliqués à chaque démarrage. Ils sont aussi inclus dans « Exporter tout ».</div>
+      </div>
+      <h2>Sécurité Bluetooth</h2>
+      <div class="card">
+        <div class="muted">Le code PIN empêche un inconnu à portée Bluetooth de piloter la carte. Il est demandé à chaque nouvel appareil, puis mémorisé par le navigateur. Il n'est pas chiffré : c'est un verrou, pas un coffre-fort.</div>
+        <button class="btn" id="btnPin">Changer le code PIN</button>
+      </div>
+      <h2>Sauvegarde</h2>
+      <div class="card">
+        <div class="muted">
+          Les signaux sont enregistrés dans la mémoire flash de la carte : ils survivent au débranchement.
+          Pour les garder ailleurs (ou les transférer sur une autre carte), utilise « Exporter tout (JSON) » dans l'onglet Bibliothèque
+          puis « Importer un JSON » la prochaine fois. Les anciens exports de la version Wi-Fi sont acceptés.
+        </div>
+      </div>
+    </section>
+    </div>
+
+  </main>
+</div>
+
+<dialog id="editDlg">
+  <h2>Éditer le signal</h2>
+  <label>Nom</label>
+  <input type="text" id="editName">
+  <div class="row">
+    <div><label>Fréquence (MHz)</label><input type="text" id="editFreq"></div>
+    <div><label>Modulation</label>
+      <select id="editMod">
+        <option value="2">ASK/OOK</option><option value="0">2-FSK</option><option value="1">GFSK</option>
+        <option value="3">4-FSK</option><option value="4">MSK</option>
+      </select>
+    </div>
+    <div><label>Niveau de départ</label>
+      <select id="editStart"><option value="0">bas</option><option value="1">haut</option></select>
+    </div>
+  </div>
+  <label>Durées (µs), séparées par des virgules</label>
+  <textarea id="editData" style="min-height:160px"></textarea>
+  <div style="text-align:right">
+    <button class="btn" id="btnEditCancel">Annuler</button>
+    <button class="btn primary" id="btnEditSave" style="margin-right:0">Enregistrer</button>
+  </div>
+</dialog>
+<div id="toast"></div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const MOD_NAMES = {0:'2-FSK',1:'GFSK',2:'ASK/OOK',3:'4-FSK',4:'MSK'};
+
+function toast(msg, isErr){
+  const t = $('toast');
+  t.textContent = msg;
+  t.className = isErr ? 'err' : 'ok';
+  t.style.display = 'block';
+  clearTimeout(t._h);
+  t._h = setTimeout(()=>t.style.display='none', isErr ? 5000 : 3000);
+}
+const errMsg = (e) => (e && e.message) ? e.message : String(e);
+
+// ------------------------------------------------------------------
+// Mémorisation locale des champs de la page (confort uniquement)
+// ------------------------------------------------------------------
+const PERSIST = ['freqInput','modSelect','scanStart','scanStop','scanDur','repCount','loopInterval','loopMax','trimThr'];
+function restoreFields(){
+  try{
+    const saved = JSON.parse(localStorage.getItem('cc1101_fields')||'{}');
+    PERSIST.forEach(id=>{ if (saved[id] !== undefined) $(id).value = saved[id]; });
+  }catch(e){}
+}
+function saveFields(){
+  try{
+    const o = {}; PERSIST.forEach(id=>o[id]=$(id).value);
+    localStorage.setItem('cc1101_fields', JSON.stringify(o));
+  }catch(e){}
+}
+restoreFields();
+PERSIST.forEach(id=>$(id).addEventListener('change', saveFields));
+
+// ------------------------------------------------------------------
+// Liaison Bluetooth Low Energy (Web Bluetooth, service UART Nordic)
+// ------------------------------------------------------------------
+const NUS    = '6e400001-b5a3-f393-e0a9-e50e24dcca9e';
+const NUS_RX = '6e400002-b5a3-f393-e0a9-e50e24dcca9e';   // page -> carte
+const NUS_TX = '6e400003-b5a3-f393-e0a9-e50e24dcca9e';   // carte -> page
+const ser = {
+  device:null, rx:null, tx:null, rxBuf:'',
+  lines:[], waiter:null, connected:false, busy:0, chain:Promise.resolve(),
+  maxEdges:10000, maxName:60, mtu:23
+};
+const enc = new TextEncoder();
+const dec = new TextDecoder();
+
+function pushLine(l){
+  if (ser.waiter) ser.waiter(l); else ser.lines.push(l);
+}
+function nextLine(ms){
+  return new Promise((res, rej)=>{
+    if (ser.lines.length) return res(ser.lines.shift());
+    const t = setTimeout(()=>{ ser.waiter = null; rej(new Error('Pas de réponse de la carte (délai dépassé)')); }, ms);
+    ser.waiter = (l)=>{ clearTimeout(t); ser.waiter = null; res(l); };
+  });
+}
+function onNotify(ev){
+  const v = ev.target.value;
+  ser.rxBuf += dec.decode(new Uint8Array(v.buffer, v.byteOffset, v.byteLength), { stream:true });
+  let i;
+  while ((i = ser.rxBuf.indexOf('\n')) >= 0){
+    const line = ser.rxBuf.slice(0, i).replace(/\r$/, '');
+    ser.rxBuf = ser.rxBuf.slice(i + 1);
+    if (line[0] === '>' || line[0] === '#') pushLine(line);
+  }
+  if (ser.rxBuf.length > 200000) ser.rxBuf = '';
+}
+// écriture par morceaux qui tiennent dans un paquet BLE (MTU annoncée par la carte)
+async function writeLine(s){
+  const bytes = enc.encode(s + '\n');
+  const piece = Math.max(20, Math.min(180, ser.mtu - 3));
+  for (let i = 0; i < bytes.length; i += piece){
+    const part = bytes.slice(i, i + piece);
+    if (ser.rx.writeValueWithResponse) await ser.rx.writeValueWithResponse(part);
+    else await ser.rx.writeValue(part);
+  }
+}
+
+// une seule conversation à la fois avec la carte
+function exclusive(fn){
+  const p = ser.chain.then(async ()=>{
+    if (!ser.connected) throw new Error('Carte non connectée');
+    ser.busy++;
+    try { return await fn(); } finally { ser.busy--; }
+  });
+  ser.chain = p.catch(()=>{});
+  return p;
+}
+
+async function readResult(timeout){
+  const data = [];
+  for(;;){
+    const l = await nextLine(timeout);
+    if (l[0] === '#'){ data.push(l.slice(1)); continue; }
+    if (l.startsWith('>OK')){
+      const j = l.slice(3).trim();
+      return { json: j ? JSON.parse(j) : {}, data };
+    }
+    if (l.startsWith('>ERR')) throw new Error(l.slice(4).trim() || 'Erreur');
+  }
+}
+function request(cmd, timeout){
+  return exclusive(async ()=>{
+    ser.lines.length = 0;
+    await writeLine(cmd);
+    return await readResult(timeout || 5000);
+  });
+}
+function parseDataLines(lines){
+  const out = [];
+  for (const ln of lines) for (const v of ln.split(',')) if (v !== '') out.push(parseInt(v, 10));
+  return out;
+}
+// récupère des durées et vérifie qu'aucun paquet Bluetooth n'a été perdu
+async function fetchDurations(cmd, retryCmd, timeout){
+  let lastErr = null;
+  for (let t = 0; t < 3; t++){
+    const r = await request(t === 0 ? cmd : retryCmd, timeout || 20000);
+    const d = parseDataLines(r.data);
+    if (d.length === r.json.n) return { json:r.json, d };
+    lastErr = new Error('Transfert Bluetooth incomplet (' + d.length + '/' + r.json.n + ')');
+  }
+  throw lastErr;
+}
+// envoi d'un signal (SAVE / UPDATE) avec contrôle de flux par blocs
+function upload(cmd, durations){
+  return exclusive(async ()=>{
+    ser.lines.length = 0;
+    await writeLine(cmd);
+    let l = await nextLine(5000);
+    while (l[0] === '#') l = await nextLine(5000);
+    if (l.startsWith('>ERR')) throw new Error(l.slice(4).trim());
+    if (!l.startsWith('>READY')) throw new Error('Réponse inattendue : ' + l);
+    const CH = 300;
+    for (let i = 0; i < durations.length; i += CH){
+      await writeLine(durations.slice(i, i + CH).join(','));
+      l = await nextLine(15000);
+      if (l.startsWith('>ERR')) throw new Error(l.slice(4).trim());
+      if (l.startsWith('>OK')) return JSON.parse(l.slice(3));
+      // ">A" : bloc suivant
+    }
+    throw new Error('Transfert incomplet');
+  });
+}
+
+function onGattDisconnect(){
+  if (ser.connected) markDisconnected('Bluetooth déconnecté (la carte continue ce qu\'elle faisait)');
+}
+
+function markDisconnected(msg){
+  ser.connected = false;
+  ser.lines.length = 0;
+  if (ser.waiter) { const w = ser.waiter; ser.waiter = null; w('>ERR déconnecté'); }
+  ser.rx = null; ser.tx = null;
+  setConnectedUI(false);
+  if (msg) toast(msg, true);
+}
+
+function setConnectedUI(on){
+  $('layout').classList.toggle('offline', !on);
+  $('offlineNotice').style.display = on ? 'none' : 'block';
+  $('dot').classList.toggle('on', on);
+  $('hdrStatus').textContent = on ? 'connecté' : 'non connecté';
+  $('btnConnect').textContent = on ? 'Déconnecter' : 'Connecter la carte';
+  $('btnConnect').className = on ? 'btn' : 'btn primary';
+  if (!on){
+    $('loopBanner').style.display = 'none';
+    $('capPill').textContent = 'Inactif'; $('capPill').className = 'pill'; $('capInfo').textContent = '';
+    $('btnStart').disabled = false; $('btnStop').disabled = true;
+    $('watchPill').textContent = 'Désactivée'; $('watchPill').className = 'pill'; $('watchInfo').textContent = '';
+  }
+}
+
+// ---- code PIN (mémorisé par le navigateur) ----
+function getStoredPin(){ try{ return localStorage.getItem('cc1101_pin'); }catch(e){ return null; } }
+function storePin(p){ try{ localStorage.setItem('cc1101_pin', p); }catch(e){} }
+function clearStoredPin(){ try{ localStorage.removeItem('cc1101_pin'); }catch(e){} }
+
+async function authenticate(){
+  let pin = getStoredPin();
+  for (let attempt = 0; attempt < 4; attempt++){
+    if (pin === null){
+      pin = prompt('Code PIN de la carte (par défaut : 0000)', '0000');
+      if (pin === null) throw new Error('Connexion annulée');
+      pin = pin.trim();
+    }
+    try{ await request('AUTH ' + pin, 8000); storePin(pin); return; }
+    catch(e){ pin = null; clearStoredPin(); toast('Code PIN incorrect', true); }
+  }
+  throw new Error('Code PIN incorrect');
+}
+
+async function openDevice(device){
+  ser.device = device;
+  device.addEventListener('gattserverdisconnected', onGattDisconnect);
+  try{
+    const server = await device.gatt.connect();
+    const svc = await server.getPrimaryService(NUS);
+    ser.rx = await svc.getCharacteristic(NUS_RX);
+    ser.tx = await svc.getCharacteristic(NUS_TX);
+    ser.tx.addEventListener('characteristicvaluechanged', onNotify);
+    await ser.tx.startNotifications();
+    ser.lines.length = 0; ser.rxBuf = '';
+    ser.connected = true;
+
+    let hello = null, lastErr = null;
+    for (let i = 0; i < 5 && !hello; i++){
+      try{ hello = (await request('HELLO', 3000)).json; }catch(e){ lastErr = e; }
+    }
+    if (!hello) throw new Error('La carte ne répond pas : ' + errMsg(lastErr));
+    ser.maxEdges = hello.max_edges || 10000;
+    ser.maxName = hello.max_name || 60;
+    if (hello.mtu) ser.mtu = hello.mtu;
+    await authenticate();
+    setConnectedUI(true);
+    const why = hello.reset || 'inconnue';
+    $('bootInfo').textContent = 'Dernier démarrage de la carte : ' + why + ' (il y a ' + Math.round((hello.uptime_ms || 0) / 1000) + ' s).';
+    $('hdrStatus').title = 'Dernier démarrage : ' + why;
+    if (/brownout|panic|watchdog/.test(why)) toast('La carte avait redémarré : ' + why + '. Voir Réglages pour la puissance d\'émission.', true);
+    if (!hello.cc1101) toast('CC1101 non détecté par la carte : vérifie le câblage', true);
+    await syncFromDevice();
+  }catch(e){
+    ser.connected = false;
+    try{ device.gatt.disconnect(); }catch(_){}
+    setConnectedUI(false);
+    throw e;
+  }
+}
+
+async function disconnect(){
+  const d = ser.device;
+  ser.connected = false;
+  try{ if (d && d.gatt.connected) d.gatt.disconnect(); }catch(e){}
+  markDisconnected();
+}
+
+$('btnConnect').addEventListener('click', async ()=>{
+  if (ser.connected){ await disconnect(); toast('Déconnecté (la carte continue ce qu\'elle faisait)'); return; }
+  $('btnConnect').disabled = true;
+  try{
+    if (ser.device){   // tentative de reconnexion directe au dernier appareil
+      try{ await openDevice(ser.device); return; }catch(e){ /* on repasse par la liste */ }
+    }
+    const device = await navigator.bluetooth.requestDevice({
+      filters:[{ services:[NUS] }, { namePrefix:'CC1101' }],
+      optionalServices:[NUS]
+    });
+    await openDevice(device);
+  }catch(e){
+    if (e && e.name === 'NotFoundError') return;   // fenêtre de choix fermée
+    toast('Connexion impossible : ' + errMsg(e), true);
+  }finally{
+    $('btnConnect').disabled = false;
+  }
+});
+
+if (!('bluetooth' in navigator)){
+  $('noSerial').style.display = 'block';
+  $('btnConnect').disabled = true;
+  $('offlineNotice').style.display = 'none';
+}
+setConnectedUI(false);
+
+// ------------------------------------------------------------------
+// Synchronisation avec l'état de la carte (reprise après rechargement de la page)
+// ------------------------------------------------------------------
+let lastStatus = null;
+let sigNames = {};
+const pending = { shown:false, loading:false, start:false, freq:433.92, mod:2 };
+
+function fillRadio(r){
+  $('advRxbw').value = r.rxbw; $('advDrate').value = r.drate;
+  $('advDev').value = r.deviation; $('advThresh').value = r.rssi_threshold;
+  if (r.pa !== undefined) $('advPa').value = String(r.pa);
+}
+
+async function syncFromDevice(){
+  try{
+    const s = (await request('STATUS')).json;
+    fillRadio(s.radio);
+    $('watchFreq').value = Number(s.watch.freq).toFixed(2); $('watchMod').value = String(s.watch.mod);
+    if (s.capturing){ $('freqInput').value = Number(s.cap_freq).toFixed(2); $('modSelect').value = String(s.cap_mod); }
+    await loadLibrary(true);
+    applyStatus(s);
+    if (s.capturing) toast('Capture en cours retrouvée sur la carte');
+    else if (s.loop.active) toast('Boucle d\'émission en cours retrouvée sur la carte');
+  }catch(e){ toast('Synchronisation : ' + errMsg(e), true); }
+}
+
+function applyStatus(s){
+  lastStatus = s;
+  if (s.mtu) ser.mtu = s.mtu;
+  $('hdrStatus').textContent = 'connecté · RSSI ' + s.rssi + ' dBm';
+  $('rssiVal').textContent = s.rssi;
+  $('rssiBar').style.width = Math.max(0, Math.min(100, s.rssi + 100)) + '%';
+
+  if (s.capturing){
+    $('capPill').textContent = s.activity ? 'Signal probable...' : 'Écoute...';
+    $('capPill').className = 'pill ' + (s.activity ? 'on' : 'warn');
+    $('capInfo').textContent = s.edges + ' transitions · ' + (s.elapsed_ms / 1000).toFixed(1) + ' s';
+    $('btnStart').disabled = true; $('btnStop').disabled = false;
+  } else {
+    $('capPill').textContent = 'Inactif'; $('capPill').className = 'pill';
+    $('capInfo').textContent = '';
+    $('btnStart').disabled = false; $('btnStop').disabled = true;
+  }
+
+  const lp = s.loop;
+  $('loopBanner').style.display = lp.active ? 'flex' : 'none';
+  if (lp.active){
+    const nm = sigNames[lp.id] || ('#' + lp.id);
+    $('loopText').textContent = '▶ Boucle en cours : « ' + nm + ' » toutes les ' + (lp.interval_ms / 1000) +
+      ' s · ' + lp.done + (lp.max > 0 ? ' / ' + lp.max : '') + ' envoi(s)';
+  }
+  document.querySelectorAll('#sigTableBody tr').forEach(tr=>{
+    tr.classList.toggle('looping', lp.active && Number(tr.dataset.id) === lp.id);
+  });
+
+  applyWatchStatus(s);
+
+  // capture terminée (arrêt auto ou page rechargée) et pas encore affichée
+  if (s.has_capture && !s.capturing && !pending.shown && !pending.loading) loadPending();
+}
+
+async function pollStatus(){
+  if (!ser.connected || ser.busy > 0) return;
+  try{ applyStatus((await request('STATUS')).json); }
+  catch(e){ /* on réessaie au prochain tour */ }
+}
+setInterval(pollStatus, 1500);
+
+// ------------------------------------------------------------------
+// Navigation
+// ------------------------------------------------------------------
+document.querySelectorAll('.navbtn').forEach(b=>{
+  b.addEventListener('click', ()=>{
+    document.querySelectorAll('.navbtn').forEach(x=>x.classList.remove('active'));
+    document.querySelectorAll('main section').forEach(x=>x.classList.remove('active'));
+    b.classList.add('active');
+    $('tab-' + b.dataset.tab).classList.add('active');
+    if ((b.dataset.tab === 'library' || b.dataset.tab === 'triggers') && ser.connected) loadLibrary();
+  });
+});
+
+// ------------------------------------------------------------------
+// Utilitaires
+// ------------------------------------------------------------------
+function parseDur(s){
+  return s.split(/[\s,;]+/).filter(Boolean).map(x=>parseInt(x, 10)).filter(n=>!isNaN(n))
+          .map(n=>Math.max(0, Math.min(65535, n)));
+}
+function cleanName(s){
+  s = (s || '').replace(/[\u0000-\u001f]/g, ' ').trim() || 'Signal';
+  while (enc.encode(s).length > ser.maxName) s = s.slice(0, -1);
+  return s;
+}
+function checkDurations(d){
+  if (d.length < 2) throw new Error('Il faut au moins 2 durées');
+  if (d.length > ser.maxEdges) throw new Error('Trop de valeurs (' + d.length + ', maximum ' + ser.maxEdges + ')');
+}
+function trimSilence(d, start, thrUs){
+  let first = 0, last = d.length ? d.length - 1 : 0;
+  while (first < d.length && d[first] > thrUs){ start = !start; first++; }
+  while (last > first && d[last] > thrUs) last--;
+  return { d: d.slice(first, last + 1), start };
+}
+function download(filename, text){
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([text], { type:'application/json' }));
+  a.download = filename;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href), 2000);
+}
+const safeFile = (s) => (s || 'signal').replace(/[^\w\-. ]+/g, '_').slice(0, 60);
+
+// ------------------------------------------------------------------
+// Capture
+// ------------------------------------------------------------------
+function showPending(durations, meta){
+  pending.shown = true;
+  pending.start = !!meta.start_level_high;
+  pending.freq = meta.freq_mhz;
+  pending.mod = meta.modulation;
+  $('pendingCard').style.display = 'block';
+  $('pendingInfo').textContent = durations.length + ' valeurs · ' + Number(meta.freq_mhz).toFixed(2) + ' MHz · ' +
+    (MOD_NAMES[meta.modulation] || meta.modulation) + ' · niveau de départ : ' + (pending.start ? 'haut' : 'bas');
+  $('pendingData').value = durations.join(',');
+  $('pendingName').value = '';
+}
+function hidePending(){ pending.shown = false; $('pendingCard').style.display = 'none'; }
+
+async function loadPending(){
+  pending.loading = true;
+  try{
+    const r = await fetchDurations('CAP_GET', 'CAP_GET');
+    showPending(r.d, r.json);
+  }catch(e){ /* rien à récupérer */ }
+  pending.loading = false;
+}
+
+$('btnStart').addEventListener('click', async ()=>{
+  const f = parseFloat($('freqInput').value.replace(',', '.'));
+  if (isNaN(f)) return toast('Fréquence invalide', true);
+  try{
+    await request('CAP_START ' + f.toFixed(3) + ' ' + parseInt($('modSelect').value, 10));
+    hidePending();
+    $('btnStart').disabled = true; $('btnStop').disabled = false;
+    saveFields();
+  }catch(e){ toast('Erreur : ' + errMsg(e), true); }
+});
+
+$('btnStop').addEventListener('click', async ()=>{
+  try{
+    const r = await fetchDurations('CAP_STOP', 'CAP_GET');
+    showPending(r.d, r.json);
+  }catch(e){ toast('Erreur : ' + errMsg(e), true); }
+});
+
+$('btnTrim').addEventListener('click', ()=>{
+  const d = parseDur($('pendingData').value);
+  const thr = Math.max(1, parseFloat($('trimThr').value) || 50) * 1000;
+  const r = trimSilence(d, pending.start, thr);
+  pending.start = r.start;
+  $('pendingData').value = r.d.join(',');
+  $('pendingInfo').textContent = r.d.length + ' valeurs après rognage · niveau de départ : ' + (pending.start ? 'haut' : 'bas');
+  toast('Rognage effectué');
+  saveFields();
+});
+
+$('btnSave').addEventListener('click', async ()=>{
+  try{
+    const d = parseDur($('pendingData').value);
+    checkDurations(d);
+    const name = cleanName($('pendingName').value || ('Signal ' + new Date().toLocaleString()));
+    await upload('SAVE ' + Number(pending.freq).toFixed(3) + ' ' + pending.mod + ' ' + (pending.start ? 1 : 0) + ' ' + d.length + ' ' + name, d);
+    await request('CAP_CLEAR');
+    hidePending();
+    toast('Signal enregistré');
+    loadLibrary();
+  }catch(e){ toast('Erreur : ' + errMsg(e), true); }
+});
+
+$('btnDiscard').addEventListener('click', async ()=>{
+  try{ await request('CAP_CLEAR'); }catch(e){}
+  hidePending();
+});
+
+$('btnScan').addEventListener('click', async ()=>{
+  const a = parseFloat($('scanStart').value.replace(',', '.')), b = parseFloat($('scanStop').value.replace(',', '.'));
+  const sec = Math.max(1, Math.min(30, parseInt($('scanDur').value, 10) || 6));
+  if (isNaN(a) || isNaN(b) || b <= a) return toast('Plage de fréquences invalide', true);
+  $('btnScan').disabled = true; $('btnScan').textContent = 'Recherche en cours...';
+  try{
+    const r = (await request('SCAN ' + a + ' ' + b + ' ' + (sec * 1000), sec * 1000 + 6000)).json;
+    if (r.best_rssi > -100){
+      $('freqInput').value = r.best_freq.toFixed(2);
+      toast('Fréquence trouvée : ' + r.best_freq.toFixed(2) + ' MHz (RSSI ' + r.best_rssi + ')');
+      saveFields();
+    } else { toast('Aucun signal net trouvé, réessaie plus près', true); }
+  }catch(e){ toast('Erreur : ' + errMsg(e), true); }
+  $('btnScan').disabled = false; $('btnScan').textContent = 'Lancer la recherche';
+});
+
+// ------------------------------------------------------------------
+// Bibliothèque
+// ------------------------------------------------------------------
+let currentSignals = [];
+
+async function loadLibrary(silent){
+  try{
+    const r = (await request('LIST', 15000)).json;
+    currentSignals = r.signals;
+    sigNames = {};
+    currentSignals.forEach(s=>sigNames[s.id] = s.name);
+    $('libCount').textContent = currentSignals.length + ' signal(aux) enregistré(s)';
+    $('libStorage').textContent = 'Mémoire flash de la carte : ' + Math.round(r.storage.used / 1024) + ' Ko utilisés sur ' + Math.round(r.storage.total / 1024) + ' Ko.';
+    const tb = $('sigTableBody'); tb.innerHTML = '';
+    currentSignals.forEach(s=>{
+      const tr = document.createElement('tr');
+      tr.dataset.id = s.id;
+      const tdName = document.createElement('td'); tdName.textContent = s.name;
+      const tdF = document.createElement('td'); tdF.textContent = Number(s.freq_mhz).toFixed(2) + ' MHz';
+      const tdM = document.createElement('td'); tdM.textContent = MOD_NAMES[s.modulation] || s.modulation;
+      const tdN = document.createElement('td'); tdN.textContent = s.n;
+      const tdA = document.createElement('td'); tdA.className = 'actions';
+      [['Rejouer','',()=>replaySig(s.id)],['Boucle','',()=>loopSig(s.id)],['Éditer','',()=>editSig(s.id)],
+       ['Exporter','',()=>exportSig(s.id)],['Suppr.','danger',()=>delSig(s.id)]].forEach(([label, cls, fn])=>{
+        const b = document.createElement('button'); b.className = 'btn ' + cls; b.textContent = label;
+        b.addEventListener('click', fn); tdA.appendChild(b);
+      });
+      tr.append(tdName, tdF, tdM, tdN, tdA);
+      tb.appendChild(tr);
+    });
+    if (lastStatus) applyStatus(lastStatus);
+    await loadRules();
+  }catch(e){ if (!silent) toast('Erreur chargement : ' + errMsg(e), true); }
+}
+
+async function replaySig(id){
+  const rep = Math.max(1, Math.min(200, parseInt($('repCount').value, 10) || 10));
+  try{ await request('REPLAY ' + id + ' ' + rep, 60000); toast('Rejoué (' + rep + ' répétitions)'); saveFields(); }
+  catch(e){ toast('Erreur : ' + errMsg(e), true); }
+}
+
+async function loopSig(id){
+  const iv = Math.max(0.2, parseFloat($('loopInterval').value) || 2);
+  const rep = Math.max(1, Math.min(200, parseInt($('repCount').value, 10) || 10));
+  const mx = Math.max(0, parseInt($('loopMax').value, 10) || 0);
+  try{
+    await request('LOOP_START ' + id + ' ' + Math.round(iv * 1000) + ' ' + rep + ' ' + mx + ' ' + ($('loopPersist').checked ? 1 : 0));
+    toast('Boucle démarrée. Elle continue même si tu fermes la page.' + (($('loopPersist').checked && mx === 0) ? ' Elle reprendra si la carte redémarre.' : ''));
+    saveFields();
+    pollStatus();
+  }catch(e){ toast('Erreur : ' + errMsg(e), true); }
+}
+
+$('btnLoopStop').addEventListener('click', async ()=>{
+  try{ await request('LOOP_STOP'); toast('Boucle arrêtée'); pollStatus(); }
+  catch(e){ toast('Erreur : ' + errMsg(e), true); }
+});
+
+async function delSig(id){
+  if (!confirm('Supprimer ce signal ?')) return;
+  try{ await request('SIG_DEL ' + id); loadLibrary(); }
+  catch(e){ toast('Erreur : ' + errMsg(e), true); }
+}
+
+async function getSignal(id){
+  const r = await fetchDurations('SIG_GET ' + id, 'SIG_GET ' + id);
+  return {
+    name: r.json.name, freq_mhz: r.json.freq_mhz, modulation: r.json.modulation,
+    start_level_high: !!r.json.start_level_high, durations_us: r.d
+  };
+}
+
+async function exportSig(id){
+  try{
+    const s = await getSignal(id);
+    download(safeFile(s.name) + '.json', JSON.stringify(s));
+  }catch(e){ toast('Erreur : ' + errMsg(e), true); }
+}
+
+// ---- édition ----
+let editingId = null;
+async function editSig(id){
+  try{
+    const s = await getSignal(id);
+    editingId = id;
+    $('editName').value = s.name;
+    $('editFreq').value = Number(s.freq_mhz).toFixed(3);
+    $('editMod').value = String(s.modulation);
+    $('editStart').value = s.start_level_high ? '1' : '0';
+    $('editData').value = s.durations_us.join(',');
+    $('editDlg').showModal();
+  }catch(e){ toast('Erreur : ' + errMsg(e), true); }
+}
+$('btnEditCancel').addEventListener('click', ()=>$('editDlg').close());
+$('btnEditSave').addEventListener('click', async ()=>{
+  try{
+    const d = parseDur($('editData').value);
+    checkDurations(d);
+    const f = parseFloat($('editFreq').value.replace(',', '.'));
+    if (isNaN(f)) throw new Error('Fréquence invalide');
+    const name = cleanName($('editName').value);
+    await upload('UPDATE ' + editingId + ' ' + f.toFixed(3) + ' ' + parseInt($('editMod').value, 10) + ' ' +
+                 parseInt($('editStart').value, 10) + ' ' + d.length + ' ' + name, d);
+    $('editDlg').close();
+    toast('Modifié');
+    loadLibrary();
+  }catch(e){ toast('Erreur : ' + errMsg(e), true); }
+});
+
+// ---- export / import ----
+$('btnExportAll').addEventListener('click', async ()=>{
+  try{
+    const list = (await request('LIST', 15000)).json.signals;
+    const signals = [];
+    for (let i = 0; i < list.length; i++){
+      toast('Export… ' + (i + 1) + ' / ' + list.length);
+      signals.push(await getSignal(list[i].id));
+    }
+    const out = { format:'cc1101-tool', version:2, exported:new Date().toISOString(),
+                  radio: lastStatus ? lastStatus.radio : undefined, signals };
+    const stamp = new Date().toISOString().slice(0, 10);
+    download('cc1101_signaux_' + stamp + '.json', JSON.stringify(out));
+    toast(signals.length + ' signal(aux) exporté(s)');
+  }catch(e){ toast('Erreur export : ' + errMsg(e), true); }
+});
+
+$('btnImport').addEventListener('click', ()=>$('importFile').click());
+$('importFile').addEventListener('change', async (e)=>{
+  const file = e.target.files[0]; e.target.value = '';
+  if (!file) return;
+  try{
+    const data = JSON.parse(await file.text());
+    let list, radio = null;
+    if (Array.isArray(data)) list = data;
+    else if (Array.isArray(data.signals)){ list = data.signals; radio = data.radio || null; }
+    else list = [data];
+    list = list.filter(s=>s && Array.isArray(s.durations_us));
+    if (!list.length) throw new Error('Aucun signal trouvé dans ce fichier');
+    let ok = 0, skipped = 0;
+    for (let i = 0; i < list.length; i++){
+      const s = list[i];
+      toast('Import… ' + (i + 1) + ' / ' + list.length);
+      try{
+        const d = s.durations_us.map(n=>Math.max(0, Math.min(65535, Math.round(Number(n)) || 0)));
+        checkDurations(d);
+        const f = Number(s.freq_mhz) || 433.92;
+        const m = (s.modulation === undefined) ? 2 : parseInt(s.modulation, 10);
+        await upload('SAVE ' + f.toFixed(3) + ' ' + m + ' ' + (s.start_level_high ? 1 : 0) + ' ' + d.length + ' ' + cleanName(s.name || 'Importé'), d);
+        ok++;
+      }catch(err){ skipped++; console.warn('Signal ignoré', s && s.name, err); }
+    }
+    if (radio && confirm('Appliquer aussi les réglages radio avancés contenus dans le fichier ?')){
+      await request('RADIO ' + radio.rxbw + ' ' + radio.drate + ' ' + radio.deviation + ' ' + radio.rssi_threshold + (radio.pa !== undefined ? ' ' + radio.pa : ''));
+      fillRadio(radio);
+    }
+    toast(ok + ' signal(aux) importé(s)' + (skipped ? ', ' + skipped + ' ignoré(s)' : ''), skipped > 0 && ok === 0);
+    loadLibrary();
+  }catch(err){ toast('Erreur import : ' + errMsg(err), true); }
+});
+
+
+// ------------------------------------------------------------------
+// Écoute permanente et déclencheurs
+// ------------------------------------------------------------------
+let rules = [];
+let editingRule = null;
+
+function applyWatchStatus(s){
+  const w = s.watch;
+  if (w.enabled && w.running){
+    $('watchPill').textContent = 'Écoute active · ' + Number(w.freq).toFixed(2) + ' MHz'; $('watchPill').className = 'pill on';
+  } else if (w.enabled){
+    $('watchPill').textContent = 'En pause (capture / émission)'; $('watchPill').className = 'pill warn';
+  } else {
+    $('watchPill').textContent = 'Désactivée'; $('watchPill').className = 'pill';
+  }
+  $('btnWatchToggle').textContent = w.enabled ? "Désactiver l'écoute permanente" : "Activer l'écoute permanente";
+  $('btnWatchToggle').className = w.enabled ? 'btn danger' : 'btn primary';
+  $('watchInfo').textContent = w.fires > 0 ? w.fires + ' déclenchement(s), dernière règle n°' + w.last_rule : '';
+}
+
+async function sendWatch(enabled){
+  const f = parseFloat($('watchFreq').value.replace(',', '.'));
+  if (isNaN(f)) return toast('Fréquence invalide', true);
+  try{
+    await request('WATCH ' + (enabled ? 1 : 0) + ' ' + f.toFixed(3) + ' ' + parseInt($('watchMod').value, 10));
+    toast(enabled ? 'Écoute permanente activée' : 'Écoute permanente désactivée');
+    pollStatus();
+  }catch(e){ toast('Erreur : ' + errMsg(e), true); }
+}
+$('btnWatchToggle').addEventListener('click', ()=>sendWatch(!(lastStatus && lastStatus.watch.enabled)));
+$('btnWatchApply').addEventListener('click', ()=>sendWatch(!!(lastStatus && lastStatus.watch.enabled)));
+
+function fillRuleSelects(){
+  ['ruleTrigger','ruleAction'].forEach(id=>{
+    const sel = $(id), cur = sel.value;
+    sel.innerHTML = '';
+    currentSignals.forEach(s=>{
+      const o = document.createElement('option');
+      o.value = s.id; o.textContent = s.name + ' (' + Number(s.freq_mhz).toFixed(2) + ' MHz)';
+      sel.appendChild(o);
+    });
+    if (cur && currentSignals.some(s=>String(s.id) === cur)) sel.value = cur;
+  });
+}
+
+async function loadRules(){
+  const r = (await request('RULES')).json;
+  rules = r.rules;
+  fillRuleSelects();
+  renderRules();
+}
+
+function sigLabel(id){ return sigNames[id] || ('#' + id + ' (supprimé)'); }
+
+function renderRules(){
+  $('ruleCount').textContent = rules.length + ' règle(s)';
+  const tb = $('ruleTableBody'); tb.innerHTML = '';
+  const wf = lastStatus ? lastStatus.watch.freq : null;
+  rules.forEach(r=>{
+    const tr = document.createElement('tr');
+    const tdT = document.createElement('td');
+    tdT.textContent = sigLabel(r.trigger);
+    const sg = currentSignals.find(s=>s.id === r.trigger);
+    if (!sigNames[r.trigger] || !r.ok){
+      const w = document.createElement('div'); w.className = 'hint'; w.style.color = 'var(--danger)';
+      w.textContent = !sigNames[r.trigger] ? 'Signal supprimé : règle inactive' : 'Motif inexploitable (signal trop court ou sans trame nette)';
+      tdT.appendChild(w);
+    } else if (sg && wf !== null && Math.abs(sg.freq_mhz - wf) > 0.1){
+      const w = document.createElement('div'); w.className = 'hint'; w.style.color = 'var(--warn)';
+      w.textContent = 'Attention : ce signal est à ' + Number(sg.freq_mhz).toFixed(2) + ' MHz, l\'écoute est à ' + Number(wf).toFixed(2) + ' MHz';
+      tdT.appendChild(w);
+    }
+    const tdA = document.createElement('td'); tdA.textContent = sigLabel(r.action);
+    const tdC = document.createElement('td'); tdC.textContent = (r.cooldown_ms / 1000) + ' s';
+    const tdR = document.createElement('td'); tdR.textContent = r.repeats;
+    const tdF = document.createElement('td'); tdF.textContent = r.fires;
+    const tdB = document.createElement('td'); tdB.className = 'actions';
+    const pill = document.createElement('span'); pill.className = 'pill ' + (r.enabled ? 'on' : ''); pill.textContent = r.enabled ? 'active' : 'désactivée';
+    pill.style.marginRight = '6px'; tdB.appendChild(pill);
+    [['Modifier','',()=>editRule(r)],[r.enabled ? 'Désactiver' : 'Activer','',()=>toggleRule(r)],['Suppr.','danger',()=>delRule(r)]].forEach(([label, cls, fn])=>{
+      const b = document.createElement('button'); b.className = 'btn ' + cls; b.textContent = label;
+      b.addEventListener('click', fn); tdB.appendChild(b);
+    });
+    tr.append(tdT, tdA, tdC, tdR, tdF, tdB);
+    tb.appendChild(tr);
+  });
+}
+
+function ruleCmd(id, trigger, action, enabled, cooldownS, repeats){
+  return 'RULE_SET ' + id + ' ' + trigger + ' ' + action + ' ' + (enabled ? 1 : 0) + ' ' + Math.round(cooldownS * 1000) + ' ' + repeats;
+}
+
+function resetRuleForm(){
+  editingRule = null;
+  $('ruleFormTitle').textContent = 'Nouvelle règle';
+  $('btnRuleSave').textContent = 'Ajouter la règle';
+  $('btnRuleCancel').style.display = 'none';
+}
+
+function editRule(r){
+  editingRule = r;
+  $('ruleTrigger').value = String(r.trigger); $('ruleAction').value = String(r.action);
+  $('ruleCooldown').value = r.cooldown_ms / 1000; $('ruleRepeats').value = r.repeats;
+  $('ruleFormTitle').textContent = 'Modifier la règle n°' + r.id;
+  $('btnRuleSave').textContent = 'Enregistrer les modifications';
+  $('btnRuleCancel').style.display = 'inline-block';
+  $('ruleFormTitle').scrollIntoView({ behavior:'smooth' });
+}
+$('btnRuleCancel').addEventListener('click', resetRuleForm);
+
+$('btnRuleSave').addEventListener('click', async ()=>{
+  const t = parseInt($('ruleTrigger').value, 10), a = parseInt($('ruleAction').value, 10);
+  if (isNaN(t) || isNaN(a)) return toast('Choisis un déclencheur et une action (enregistre d\'abord des signaux)', true);
+  const cd = Math.max(0.3, parseFloat($('ruleCooldown').value) || 2);
+  const rp = Math.max(1, Math.min(200, parseInt($('ruleRepeats').value, 10) || 10));
+  try{
+    const r = (await request(ruleCmd(editingRule ? editingRule.id : 0, t, a, editingRule ? editingRule.enabled : true, cd, rp))).json;
+    if (!r.ok) toast('Règle enregistrée, mais le motif du déclencheur est inexploitable', true);
+    else toast(editingRule ? 'Règle modifiée' : 'Règle ajoutée');
+    resetRuleForm();
+    await loadRules();
+    if (lastStatus && !lastStatus.watch.enabled) toast('Pense à activer l\'écoute permanente pour que les règles fonctionnent', true);
+  }catch(e){ toast('Erreur : ' + errMsg(e), true); }
+});
+
+async function toggleRule(r){
+  try{
+    await request(ruleCmd(r.id, r.trigger, r.action, !r.enabled, r.cooldown_ms / 1000, r.repeats));
+    await loadRules();
+  }catch(e){ toast('Erreur : ' + errMsg(e), true); }
+}
+
+async function delRule(r){
+  if (!confirm('Supprimer cette règle ?')) return;
+  try{ await request('RULE_DEL ' + r.id); if (editingRule && editingRule.id === r.id) resetRuleForm(); await loadRules(); }
+  catch(e){ toast('Erreur : ' + errMsg(e), true); }
+}
+
+$('btnPin').addEventListener('click', async ()=>{
+  const p = prompt('Nouveau code PIN (4 à 12 lettres ou chiffres)');
+  if (p === null) return;
+  try{ await request('SETPIN ' + p.trim()); storePin(p.trim()); toast('Code PIN modifié'); }
+  catch(e){ toast('Erreur : ' + errMsg(e), true); }
+});
+
+// ------------------------------------------------------------------
+// Réglages radio
+// ------------------------------------------------------------------
+$('btnAdvSave').addEventListener('click', async ()=>{
+  const v = ['advRxbw','advDrate','advDev','advThresh','advPa'].map(id=>parseFloat($(id).value.replace(',', '.')));
+  if (v.some(isNaN)) return toast('Valeur invalide', true);
+  try{ await request('RADIO ' + v.join(' ')); toast('Appliqué et mémorisé dans la carte'); }
+  catch(e){ toast('Erreur : ' + errMsg(e), true); }
+});
+</script>
+</body>
+</html>
